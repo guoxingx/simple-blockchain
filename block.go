@@ -10,19 +10,29 @@ type Block struct {
 	Data		  []byte
 	PrevBlockHash []byte
 	Hash		  []byte
-    None          int
+    Nonce         int
+    Number        int
 }
 
-func NewBlock(data string, prevBlockHash []byte) *Block {
-    block := &Block{time.Now().Unix(), []byte(data), prevBlockHash, []byte{}, 0}
+func NewBlock(data string, prevBlock *Block) *Block {
+    prevBlockHash := []byte{}
+    blockNumber := 0
+    if prevBlock != nil {
+        prevBlockHash = prevBlock.Hash
+        blockNumber = prevBlock.Number + 1
+    }
+
+    block := &Block{ time.Now().Unix(), []byte(data), prevBlockHash, []byte{}, 0, blockNumber }
+
+    if block.Number == 0 { return block }
     pow := NewProofOfWork(block)
 
     nonce, hash := pow.Run()
     block.Hash = hash[:]
-    block.None = nonce
+    block.Nonce = nonce
     return block
 }
 
 func NewGenesisBlock() *Block {
-    return NewBlock("genesis", []byte{})
+    return NewBlock("genesis", nil)
 }
