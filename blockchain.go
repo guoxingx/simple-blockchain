@@ -8,6 +8,7 @@ import (
 
 const dbFile = "blockchain.db"
 const blocksBucket = "blocks" // means database.
+const latestBlockName = "latest"
 
 type Blockchain struct {
     tip []byte
@@ -45,12 +46,12 @@ func NewBlockchain() *Blockchain {
             err = b.Put(genesis.Hash, genesis.Serialize())
             if err != nil { log.Panic(err) }
 
-            err = b.Put([]byte("latest"), genesis.Hash)
+            err = b.Put([]byte(latestBlockName), genesis.Hash)
             if err != nil { log.Panic(err) }
 
             tip = genesis.Hash
         } else {
-            tip = b.Get([]byte("latest"))
+            tip = b.Get([]byte(latestBlockName))
         }
 
         return nil
@@ -64,23 +65,26 @@ func NewBlockchain() *Blockchain {
 
 // 添加一个区块
 func (bc *Blockchain) AddBlock(data string) {
-    var last Hash []byte
+    var lastEncodedBlock []byte
 
     err := bc.db.View(func(tx *bolt.Tx) error {
         b := tx.Bucket([]byte(blocksBucket))
-        lastHash = b.Get([]byte("l"))
+        lastHash := b.Get([]byte(latestBlockName))
+        lastEncodedBlock = b.Get(lastHash)
+
+        return nil
     })
     if err != nil { log.Panic(err) }
 
     // load last block by lastHash
-    newBlock := NewBlock(data, b.Get(lastHash))
+    newBlock := NewBlock(data, DeserializeBlock(lastEncodedBlock))
 
     err = bc.db.Update(func(tx *bolt.Tx) error {
         b := tx.Bucket([]byte(blocksBucket))
         err := b.Put(newBlock.Hash, newBlock.Serialize())
         if err != nil { log.Panic(err) }
 
-        err = b.Put([]byte("latest"), newBlock.Hash)
+        err = b.Put([]byte(latestBlockName), newBlock.Hash)
         if err != nil { log.Panic(err) }
 
         bc.tip = newBlock.Hash
@@ -93,7 +97,7 @@ func (bc *Blockchain) AddBlock(data string) {
 // 区块链迭代
 type BlockchainIterator struct {
     currentHash []byte
-    db          *bolt.Db
+    db          *bolt.DB
 }
 
 func (bc *Blockchain) Iterator() *BlockchainIterator {
@@ -115,9 +119,7 @@ func (i *BlockchainIterator) Next() *Block {
     })
     if err != nil { log.Panic(err) }
 
-
     i.currentHash = block.PrevBlockHash
 
     return block
 }
-
