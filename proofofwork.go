@@ -27,18 +27,17 @@ func NewProofOfWork(b *Block) *ProofOfWork {
 }
 
 func (pow *ProofOfWork) prepareData(nonce int) []byte {
-    // 综合区块信息和nonce
+    // bytes.Join f func(s [][]byte, sep []byte) []byte
     data := bytes.Join(
         [][]byte{
             pow.block.PrevBlockHash,
-            pow.block.Data,
+            pow.block.HashTransactions(),
             IntToHex(pow.block.Timestamp),
             IntToHex(int64(targetBits)),
             IntToHex(int64(nonce)),
         },
         []byte{},
     )
-
     return data
 }
 
@@ -47,7 +46,7 @@ func (pow *ProofOfWork) Run() (int, []byte) {
     var hash [32]byte
     nonce := 0
 
-    fmt.Printf("Mining the block containing \"%s\"\n", pow.block.Data)
+    fmt.Printf("Mining the block containing \"%s\"\n", pow.block.Transactions)
     for nonce < math.MaxInt64 {
         // 从0开始累加nonce，反复计算直至区块hash值小于目标值
         data := pow.prepareData(nonce)

@@ -9,6 +9,7 @@ import (
 const dbFile = "blockchain.db"
 const blocksBucket = "blocks" // means database.
 const latestBlockName = "latest"
+const genesisCoinbaseData = "Do not go gentle into that good night"
 
 type Blockchain struct {
     tip []byte
@@ -21,13 +22,16 @@ type Blockchain struct {
 1. 如果已经存储了一个区块链：
     创建一个新的 Blockchain 实例
     设置 Blockchain 实例的 tip 为数据库中存储的最后一个块的哈希
+    address 参数无效
 2. 如果没有区块链：
     创建创世块
+    把奖励交易发送到指定address
     存储到数据库
     将创世块哈希保存为最后一个块的哈希
     创建一个新的 Blockchain 实例，其 tip 指向创世块（tip 有尾部，尖端的意思，在这里 tip 存储的是最后一个块的哈希）
 */
-func NewBlockchain() *Blockchain {
+// func CreateBlockchain(address string) *Blockchain {
+func NewBlockchain(address string) *Blockchain {
     var tip []byte
     db, err := bolt.Open(dbFile, 0600, nil)
     if err != nil { log.Panic(err) }
@@ -39,7 +43,9 @@ func NewBlockchain() *Blockchain {
         if b == nil {
             fmt.Println("no exising blockchain founded. a new one will be created.")
 
-            genesis := NewGenesisBlock()
+            coinbase := NewCoinbaseTX(address, genesisCoinbaseData)
+            genesis := NewGenesisBlock(coinbase)
+
             b, err := tx.CreateBucket([]byte(blocksBucket))
             if err != nil { log.Panic(err) }
 
@@ -77,7 +83,8 @@ func (bc *Blockchain) AddBlock(data string) {
     if err != nil { log.Panic(err) }
 
     // load last block by lastHash
-    newBlock := NewBlock(data, DeserializeBlock(lastEncodedBlock))
+    txs := []*Transaction{ NewTx("", "", data) }
+    newBlock := NewBlock(txs, DeserializeBlock(lastEncodedBlock))
 
     err = bc.db.Update(func(tx *bolt.Tx) error {
         b := tx.Bucket([]byte(blocksBucket))

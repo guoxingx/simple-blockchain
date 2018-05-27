@@ -5,11 +5,12 @@ import (
     "time"
     "log"
     "encoding/gob"
+    "crypto/sha256"
 )
 
 type Block struct {
 	Timestamp	  int64
-	Data		  []byte
+    Transactions  []*Transaction
 	PrevBlockHash []byte
 	Hash		  []byte
     Nonce         int
@@ -17,10 +18,10 @@ type Block struct {
 }
 
 // 获取一个新区块
-// @param: data: string: 区块data
+// @param: transactions: []*Transaction: 待写入的交易
 // @param: prevBlock: *Block: 上一个区块
 // @return: *Block
-func NewBlock(data string, prevBlock *Block) *Block {
+func NewBlock(transactions []*Transaction, prevBlock *Block) *Block {
     prevBlockHash := []byte{}
     blockNumber := 0
     if prevBlock != nil {
@@ -28,7 +29,7 @@ func NewBlock(data string, prevBlock *Block) *Block {
         blockNumber = prevBlock.Number + 1
     }
 
-    block := &Block{ time.Now().Unix(), []byte(data), prevBlockHash, []byte{}, 0, blockNumber }
+    block := &Block{ time.Now().Unix(), transactions, prevBlockHash, []byte{}, 0, blockNumber }
 
     pow := NewProofOfWork(block)
     nonce, hash := pow.Run()
@@ -40,9 +41,11 @@ func NewBlock(data string, prevBlock *Block) *Block {
 }
 
 // 获取创世块
+// coinbase 矿工的奖励交易，不需要引用之前交易。
+// 与以太坊的coinbase账户意义不同
 // @return: *Block
-func NewGenesisBlock() *Block {
-    return NewBlock("genesis", nil)
+func NewGenesisBlock(coinbase *Transaction) *Block {
+    return NewBlock([]*Transaction{coinbase}, nil)
 }
 
 // 将一个区块序列化
@@ -67,4 +70,18 @@ func DeserializeBlock(d []byte) *Block {
     if err != nil { log.Panic(err) }
 
     return &block
+}
+
+// 一个区块所有交易的hash
+// 暂时没有使用merkle tree
+func (b *Block) HashTransactions() []byte {
+    var txHashes [][]byte // list of tx.ID
+    var txHash [32]byte
+
+    for _, tx := range b.Transactions {
+        txHashes = append(txHashes, tx.ID)
+    }
+    txHash = sha256.Sum256(bytes.Join(txHashes, []byte{}))
+
+    return txHash[:]
 }
