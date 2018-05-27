@@ -92,7 +92,8 @@ func dbExists() bool {
 }
 
 // 添加一个区块
-func (bc *Blockchain) AddBlock(data string) {
+// func (bc *Blockchain) AddBlock(data string) {
+func (bc *Blockchain) MineBlock(transactions []*Transaction) {
     var lastEncodedBlock []byte
 
     err := bc.db.View(func(tx *bolt.Tx) error {
@@ -105,8 +106,7 @@ func (bc *Blockchain) AddBlock(data string) {
     if err != nil { log.Panic(err) }
 
     // load last block by lastHash
-    txs := []*Transaction{ NewTx("", "", data) }
-    newBlock := NewBlock(txs, DeserializeBlock(lastEncodedBlock))
+    newBlock := NewBlock(transactions, DeserializeBlock(lastEncodedBlock))
 
     err = bc.db.Update(func(tx *bolt.Tx) error {
         b := tx.Bucket([]byte(blocksBucket))
@@ -224,7 +224,7 @@ func (bc *Blockchain) FindUTXO(address string) []TXOutput {
 }
 
 // 找到总额大于amout的足够的未花费输出
-func (bc *Blockchain) FindSpendableOutputs(adress string, amout int) (int, map[string][]int) {
+func (bc *Blockchain) FindSpendableOutputs(address string, amout int) (int, map[string][]int) {
     unspentOutputs := make(map[string][]int)
     unspentTXs := bc.FindUnspentTransactions(address)
     accumulated := 0
@@ -232,11 +232,15 @@ func (bc *Blockchain) FindSpendableOutputs(adress string, amout int) (int, map[s
     Work:
         // 遍历未花费输出，直至总额大于 amount
         for _, tx := range unspentTXs {
-            if out.CanBeUnlockedWith(address) && accumulated < amout {
-                accumulated += out.Value
-                unspentOutputs[txID] = append(unspentOutputs[txID], outIdx)
+            txID := hex.EncodeToString(tx.ID)
 
-                if accumulated >= amout { break Work }
+            for outIdx, out := range tx.Vout {
+                if out.CanBeUnlockedWith(address) && accumulated < amout {
+                    accumulated += out.Value
+                    unspentOutputs[txID] = append(unspentOutputs[txID], outIdx)
+
+                    if accumulated >= amout { break Work }
+                }
             }
         }
     return accumulated, unspentOutputs

@@ -2,6 +2,8 @@ package main
 
 import (
     "fmt"
+    "log"
+    "encoding/hex"
 )
 
 type Transaction struct {
@@ -38,7 +40,7 @@ func NewCoinbaseTX(to, data string) *Transaction {
     return &tx
 }
 
-fVunc NewTx(from, to, data string) *Transaction {
+func NewTx(from, to, data string) *Transaction {
     return nil
 }
 
@@ -50,15 +52,17 @@ func NewUTXOTransaction(from, to string, amount int, bc *Blockchain) *Transactio
     var inputs []TXInput
     var outputs []TXOutput
 
+    // 获取的未花费输出 总额 & UTXOs
     acc, validOutputs := bc.FindSpendableOutputs(from, amount)
 
     if acc < amount {
         log.Panic("ERROR: Not enough funds")
     }
 
-    // Build a list of inputs
+    // 花费：将获取到的每一个输出都引用并创建一个新的输入
     for txid, outs := range validOutputs {
         txID, err := hex.DecodeString(txid)
+        if err != nil { log.Panic(err) }
 
         for _, out := range outs {
             input := TXInput{txID, out, from}
@@ -66,8 +70,10 @@ func NewUTXOTransaction(from, to string, amount int, bc *Blockchain) *Transactio
         }
     }
 
-    // Build a list of outputs
+    // 转账 amount 到 to 的输出
     outputs = append(outputs, TXOutput{amount, to})
+
+    // 转账 acc - amount 的 from 的输出，即找零
     if acc > amount {
         outputs = append(outputs, TXOutput{acc - amount, from}) // a change
     }
