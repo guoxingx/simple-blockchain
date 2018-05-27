@@ -126,7 +126,7 @@ func (cli *CLI) getBalance(address string) {
     defer bc.db.Close()
 
     balance := 0
-    UTXOs := bc.FindUTXO(address)
+    UTXOs := bc.FindUTXO([]byte(address))
 
     for _, out := range UTXOs { balance += out.Value }
 
