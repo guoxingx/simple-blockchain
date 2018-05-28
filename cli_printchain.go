@@ -19,7 +19,7 @@ func (cli *CLI) printChain() {
         fmt.Printf("PoW: %s\n", strconv.FormatBool(pow.Validate()))
         fmt.Printf("Transactions: ")
         for _, tx := range block.Transactions {
-            fmt.Printf("%x, ", tx)
+            fmt.Printf("%x, ", tx.ID)
         }
         fmt.Println("\n")
 
