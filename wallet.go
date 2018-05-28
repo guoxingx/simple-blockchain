@@ -11,6 +11,7 @@ package main
 
 import (
     "log"
+    "bytes"
     "crypto/ecdsa"
     "crypto/sha256"
     "crypto/elliptic"
@@ -29,7 +30,7 @@ type Wallet struct {
 
 func NewWallet() *Wallet {
     private, public := newKeyPair()
-    wallet := Wallet{ private, public }
+    wallet := Wallet{private, public}
 
     return &wallet
 }
@@ -63,6 +64,24 @@ func (w Wallet) GetAddress() []byte {
     address := Base58Encode(fullPayload)
 
     return address
+}
+
+// 将address string 转换成pubKeyHash []byte
+func AddressToPubKeyHash(address string) (pubKeyHash []byte) {
+    pubKeyHash = Base58Decode([]byte(address))
+    pubKeyHash = pubKeyHash[1 : len(pubKeyHash) - addressChecksumLen]
+    return
+}
+
+func ValidateAddress(address string) bool {
+    pubKeyHash := Base58Decode([]byte(address))
+    actualChecksum := pubKeyHash[len(pubKeyHash) - addressChecksumLen:]
+    version := pubKeyHash[0]
+    pubKeyHash = pubKeyHash[1:len(pubKeyHash) - addressChecksumLen]
+
+    targetChecksum := checksum(append([]byte{version}, pubKeyHash...))
+
+    return bytes.Compare(actualChecksum, targetChecksum) == 0
 }
 
 // hash PublicKey

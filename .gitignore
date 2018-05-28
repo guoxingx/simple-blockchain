@@ -4,3 +4,4 @@ test.go
 *.db
 simple-blockchain
 notes
+wallet.dat

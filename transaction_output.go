@@ -9,9 +9,10 @@ type TXOutput struct {
     PubKeyHash []byte // Pubkey hash
 }
 
+// 根据address 设置 out.pubKeyHash
 func (out *TXOutput) Lock(address []byte) {
     pubKeyHash := Base58Decode(address)
-    pubKeyHash = pubKeyHash[1 : len(pubKeyHash)-4]
+    pubKeyHash = pubKeyHash[1:len(pubKeyHash) - 4]
     out.PubKeyHash = pubKeyHash
 }
 

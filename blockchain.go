@@ -8,7 +8,7 @@ import (
     "github.com/boltdb/bolt"
 )
 
-const dbFile = "chain.db"
+const dbFile = "data/chain.db"
 const blocksBucket = "blocks" // means database.
 const latestBlockName = "latest"
 const genesisCoinbaseData = "Do not go gentle into that good night"

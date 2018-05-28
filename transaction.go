@@ -50,7 +50,15 @@ func NewUTXOTransaction(from, to string, amount int, bc *Blockchain) *Transactio
     var outputs []TXOutput
 
     // 获取的未花费输出 总额 & UTXOs
-    acc, validOutputs := bc.FindSpendableOutputs([]byte(from), amount)
+    wallets, err := NewWallets()
+    if err != nil { log.Panic(err) }
+
+    // 从wallet获取address对应的pubKeyHash
+    wallet := wallets.GetWallet(from)
+    pubKeyHash := HashPubKey(wallet.PublicKey)
+
+    acc, validOutputs := bc.FindSpendableOutputs(pubKeyHash, amount)
+    fmt.Println(acc, amount)
 
     if acc < amount {
         log.Panic("ERROR: Not enough funds")
@@ -62,7 +70,7 @@ func NewUTXOTransaction(from, to string, amount int, bc *Blockchain) *Transactio
         if err != nil { log.Panic(err) }
 
         for _, out := range outs {
-            input := TXInput{txID, out, nil, []byte(from)}
+            input := TXInput{txID, out, nil, wallet.PublicKey}
             inputs = append(inputs, input)
         }
     }

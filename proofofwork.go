@@ -46,7 +46,7 @@ func (pow *ProofOfWork) Run() (int, []byte) {
     var hash [32]byte
     nonce := 0
 
-    fmt.Printf("Mining the block containing \"%s\"\n", pow.block.Transactions)
+    fmt.Printf("Mining the block containing \"%x\"\n", pow.block.Transactions)
     for nonce < math.MaxInt64 {
         // 从0开始累加nonce，反复计算直至区块hash值小于目标值
         data := pow.prepareData(nonce)
