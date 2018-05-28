@@ -9,6 +9,10 @@ func (cli *CLI) send(from, to string, amount int) {
     defer bc.db.Close()
 
     tx := NewUTXOTransaction(from, to, amount, bc)
-    bc.MineBlock([]*Transaction{tx})
+
+    // 给矿工的奖励交易
+    cbTx := NewCoinbaseTX(from, "")
+
+    bc.MineBlock([]*Transaction{cbTx, tx})
     fmt.Println("success!")
 }
