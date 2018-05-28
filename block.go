@@ -29,7 +29,7 @@ func NewBlock(transactions []*Transaction, prevBlock *Block) *Block {
         blockNumber = prevBlock.Number + 1
     }
 
-    block := &Block{ time.Now().Unix(), transactions, prevBlockHash, []byte{}, 0, blockNumber }
+    block := &Block{time.Now().Unix(), transactions, prevBlockHash, []byte{}, 0, blockNumber}
 
     pow := NewProofOfWork(block)
     nonce, hash := pow.Run()

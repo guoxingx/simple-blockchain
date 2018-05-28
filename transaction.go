@@ -4,9 +4,11 @@ import (
     "fmt"
     "log"
     "bytes"
+    "time"
     "math/big"
     "encoding/gob"
     "encoding/hex"
+    "encoding/binary"
     "crypto/sha256"
     "crypto/ecdsa"
     "crypto/rand"
@@ -24,11 +26,23 @@ type Transaction struct {
 // coinbase 交易
 // 即区块的奖励交易
 func NewCoinbaseTX(to, data string) *Transaction {
+    // 奖励交易没有输入 也不会被校验
+    // 因此 TXInput.Signature = nil, TXInput.PubKey 随机生成
+    // 根据 当前时间 和 随机数 生成 PubKey
     if data == "" {
-        data = fmt.Sprintf("Reward to '%s'", to)
+        var ts bytes.Buffer
+        binary.Write(&ts, binary.BigEndian, time.Now().UnixNano())
+
+        randData := make([]byte, 20)
+        _, err := rand.Read(randData)
+        if err != nil { log.Panic(err) }
+
+        randData = append(ts.Bytes(), randData...)
+        data = fmt.Sprintf("%v", randData)
     }
 
     txin := TXInput{[]byte{}, -1, nil, []byte(data)}
+
     txout := NewTXOutput(subsidy, to)
     tx := Transaction{nil, []TXInput{txin}, []TXOutput{*txout}}
     tx.ID = tx.Hash()
@@ -37,7 +51,7 @@ func NewCoinbaseTX(to, data string) *Transaction {
 }
 
 // 发起交易
-func NewUTXOTransaction(from, to string, amount int, bc *Blockchain) *Transaction {
+func NewUTXOTransaction(from, to string, amount int, UTXOSet *UTXOSet) *Transaction {
     var inputs []TXInput
     var outputs []TXOutput
 
@@ -49,8 +63,7 @@ func NewUTXOTransaction(from, to string, amount int, bc *Blockchain) *Transactio
     wallet := wallets.GetWallet(from)
     pubKeyHash := HashPubKey(wallet.PublicKey)
 
-    acc, validOutputs := bc.FindSpendableOutputs(pubKeyHash, amount)
-    fmt.Println(acc, amount)
+    acc, validOutputs := UTXOSet.FindSpendableOutputs(pubKeyHash, amount)
 
     if acc < amount {
         log.Panic("ERROR: Not enough funds")
@@ -79,7 +92,7 @@ func NewUTXOTransaction(from, to string, amount int, bc *Blockchain) *Transactio
 
     // 交易签名
     tx.ID = tx.Hash()
-    bc.SignTransaction(&tx, wallet.PrivateKey)
+    UTXOSet.Blockchain.SignTransaction(&tx, wallet.PrivateKey)
 
     return &tx
 }
@@ -189,6 +202,7 @@ func (tx *Transaction) Hash() []byte {
 func (tx Transaction) Serialize() []byte {
     var encoded bytes.Buffer
 
+    // gob.NewEncoder f func(w io.Writer) *gob.Encoder
     enc := gob.NewEncoder(&encoded)
     err := enc.Encode(tx)
     if err != nil { log.Panic(err) }

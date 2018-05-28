@@ -15,7 +15,7 @@ Usage:
   printchain                             print all the blocks of the blockchain
   createblockchain -address ADDRESS      Create a blockchain and send genesis block reward to ADDRESS
   createwallet                           Generates a new key-pair and saves it into the wallet file
-  listaddresses                          Lists all addresses from the wallet file
+  listaddress                            Lists all addresses from the wallet file
   getbalance -address ADDRESS            Get balance of ADDRESS
   send -from FROM -to TO -amount AMOUNT  Send AMOUNT of coins from FROM address to TO
 `
@@ -48,7 +48,7 @@ func (cli *CLI) Run() {
     case "createwallet":
         err := createWalletCmd.Parse(os.Args[2:])
         if err != nil { log.Panic(err) }
-    case "listaddresses":
+    case "listaddress":
         err := listAddressCmd.Parse(os.Args[2:])
         if err != nil { log.Panic(err) }
     case "getbalance":

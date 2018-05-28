@@ -6,13 +6,15 @@ import (
 
 func (cli *CLI) send(from, to string, amount int) {
     bc := NewBlockchain()
-    defer bc.db.Close()
+    u := &UTXOSet{bc}
+    defer u.Blockchain.db.Close()
 
-    tx := NewUTXOTransaction(from, to, amount, bc)
+    tx := NewUTXOTransaction(from, to, amount, u)
 
     // 给矿工的奖励交易
     cbTx := NewCoinbaseTX(from, "")
 
-    bc.MineBlock([]*Transaction{cbTx, tx})
+    newBlock := bc.MineBlock([]*Transaction{cbTx, tx})
+    u.Update(newBlock)
     fmt.Println("success!")
 }

@@ -95,8 +95,7 @@ func dbExists() bool {
 }
 
 // 添加一个区块
-// func (bc *Blockchain) AddBlock(data string) {
-func (bc *Blockchain) MineBlock(transactions []*Transaction) {
+func (bc *Blockchain) MineBlock(transactions []*Transaction) *Block {
     var lastEncodedBlock []byte
 
     // 校验将被写入区块的所有交易
@@ -131,6 +130,8 @@ func (bc *Blockchain) MineBlock(transactions []*Transaction) {
         return nil
     })
     if err != nil { log.Panic(err) }
+
+    return newBlock
 }
 
 func (bc *Blockchain) Iterator() *BlockchainIterator {
@@ -140,7 +141,7 @@ func (bc *Blockchain) Iterator() *BlockchainIterator {
 }
 
 // 找到包含未花费输出的交易
-func (bc *Blockchain) FindUnspentTransactions(pubKeyHash []byte) []Transaction {
+func (bc *Blockchain) FindUnspentTransactions() []Transaction {
     var unspentTXs []Transaction
     spentTXOs := make(map[string][]int)
     bci := bc.Iterator()
@@ -158,7 +159,7 @@ func (bc *Blockchain) FindUnspentTransactions(pubKeyHash []byte) []Transaction {
             // 遍历交易的所有输出
             // 因为区块是从最新往前遍历的
             // 所以可以先检查输出，再检查输入
-            for outIdx, out := range tx.Vout {
+            for outIdx, _ := range tx.Vout {
                 // 如果输出已经被包含在某个输入内 即已被花费 则跳过
                 if spentTXOs[txID] != nil {
                     for _, spentOut := range spentTXOs[txID] {
@@ -167,21 +168,14 @@ func (bc *Blockchain) FindUnspentTransactions(pubKeyHash []byte) []Transaction {
                         }
                     }
                 }
-
-                // 如果该输出可以被解锁，即可被花费
-                if out.IsLockedWithKey(pubKeyHash) {
-                    unspentTXs = append(unspentTXs, *tx)
-                }
+                unspentTXs = append(unspentTXs, *tx)
             }
 
             // 遍历交易的所有输入
             if tx.IsCoinbase() == false {
                 for _, in := range tx.Vin {
-                    // 如果该输入可以被解锁，记录该输入
-                    if in.UsesKey(pubKeyHash) {
-                        inTxID := hex.EncodeToString(in.Txid)
-                        spentTXOs[inTxID] = append(spentTXOs[inTxID], in.Vout)
-                    }
+                    inTxID := hex.EncodeToString(in.Txid)
+                    spentTXOs[inTxID] = append(spentTXOs[inTxID], in.Vout)
                 }
             }
         }
@@ -194,42 +188,19 @@ func (bc *Blockchain) FindUnspentTransactions(pubKeyHash []byte) []Transaction {
 }
 
 // 找到所有未花费的输出
-func (bc *Blockchain) FindUTXO(pubKeyHash []byte) []TXOutput {
-    var UTXOs []TXOutput
-    unspentTransactions := bc.FindUnspentTransactions(pubKeyHash)
+// func (bc *Blockchain) FindUTXO(pubKeyHash []byte) []TXOutput {
+func (bc *Blockchain) FindUTXO() map[string]TXOutputs {
+    var UTXO = make(map[string]TXOutputs)
+    unspentTransactions := bc.FindUnspentTransactions()
 
     for _, tx := range unspentTransactions {
-        for _, out := range tx.Vout {
-            if out.IsLockedWithKey(pubKeyHash) {
-                UTXOs = append(UTXOs, out)
-            }
-        }
+        txID := hex.EncodeToString(tx.ID)
+        outs := UTXO[txID]
+        outs.Outputs = append(outs.Outputs, tx.Vout...)
+        UTXO[txID] = outs
     }
 
-    return UTXOs
-}
-
-// 找到总额大于amount的足够的未花费输出
-func (bc *Blockchain) FindSpendableOutputs(pubKeyHash []byte, amount int) (int, map[string][]int) {
-    unspentOutputs := make(map[string][]int)
-    unspentTXs := bc.FindUnspentTransactions(pubKeyHash)
-    accumulated := 0
-
-    Work:
-        // 遍历未花费输出，直至总额大于 amount
-        for _, tx := range unspentTXs {
-            txID := hex.EncodeToString(tx.ID)
-
-            for outIdx, out := range tx.Vout {
-                if out.IsLockedWithKey(pubKeyHash) && accumulated < amount {
-                    accumulated += out.Value
-                    unspentOutputs[txID] = append(unspentOutputs[txID], outIdx)
-
-                    if accumulated >= amount { break Work }
-                }
-            }
-        }
-    return accumulated, unspentOutputs
+    return UTXO
 }
 
 // 根据 tx.ID 找到交易
@@ -265,6 +236,8 @@ func (bc *Blockchain) SignTransaction(tx *Transaction, privKey ecdsa.PrivateKey)
 
 // 验证交易
 func (bc *Blockchain) VerifyTransaction(tx *Transaction) bool {
+    if tx.IsCoinbase() { return true }
+
     prevTXs := make(map[string]Transaction)
 
     for _, vin := range tx.Vin {
