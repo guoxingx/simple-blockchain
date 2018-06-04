@@ -5,7 +5,6 @@ import (
     "time"
     "log"
     "encoding/gob"
-    "crypto/sha256"
 )
 
 type Block struct {
@@ -73,15 +72,13 @@ func DeserializeBlock(d []byte) *Block {
 }
 
 // 一个区块所有交易的hash
-// 暂时没有使用merkle tree
 func (b *Block) HashTransactions() []byte {
-    var txHashes [][]byte // list of tx.ID
-    var txHash [32]byte
+    var transactions [][]byte
 
     for _, tx := range b.Transactions {
-        txHashes = append(txHashes, tx.ID)
+        transactions = append(transactions, tx.Serialize())
     }
-    txHash = sha256.Sum256(bytes.Join(txHashes, []byte{}))
+    mTree := NewMerkleTree(transactions)
 
-    return txHash[:]
+    return mTree.RootNode.Data
 }
