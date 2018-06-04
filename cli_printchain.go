@@ -21,7 +21,8 @@ func (cli *CLI) printChain() {
         for _, tx := range block.Transactions {
             fmt.Printf("%x, ", tx.ID)
         }
-        fmt.Println("\n")
+        fmt.Println()
+        fmt.Println()
 
         if len(block.PrevBlockHash) == 0 { break }
     }
