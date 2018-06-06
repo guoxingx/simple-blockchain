@@ -11,10 +11,7 @@ func (cli *CLI) send(from, to string, amount int) {
 
     tx := NewUTXOTransaction(from, to, amount, u)
 
-    // 给矿工的奖励交易
-    cbTx := NewCoinbaseTX(from, "")
-
-    newBlock := bc.MineBlock([]*Transaction{cbTx, tx})
+    newBlock := bc.MineBlock(from, []*Transaction{tx})
     u.Update(newBlock)
     fmt.Println("success!")
 }

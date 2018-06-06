@@ -23,9 +23,8 @@ type Transaction struct {
     Vout []TXOutput
 }
 
-// coinbase 交易
 // 即区块的奖励交易
-func NewCoinbaseTX(to, data string) *Transaction {
+func NewRewardTx(to, data string) *Transaction {
     // 奖励交易没有输入 也不会被校验
     // 因此 TXInput.Signature = nil, TXInput.PubKey 随机生成
     // 根据 当前时间 和 随机数 生成 PubKey

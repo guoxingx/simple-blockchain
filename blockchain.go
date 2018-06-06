@@ -8,6 +8,7 @@ import (
     "errors"
     "crypto/ecdsa"
     "encoding/hex"
+
     "github.com/boltdb/bolt"
 )
 
@@ -65,19 +66,19 @@ func CreateBlockchain(address string) *Blockchain {
     if err != nil { log.Panic(err) }
 
     err = db.Update(func(tx *bolt.Tx) error {
-        coinbase := NewCoinbaseTX(address, genesisCoinbaseData)
-        genesis := NewGenesisBlock(coinbase)
+        NewRewardTx(address, genesisCoinbaseData)
+        genesis := NewGenesisBlock(address)
 
         b, err := tx.CreateBucket([]byte(blocksBucket))
         if err != nil { log.Panic(err) }
 
-        err = b.Put(genesis.Hash, genesis.Serialize())
+        err = b.Put(genesis.Hash().Bytes(), genesis.Serialize())
         if err != nil { log.Panic(err) }
 
-        err = b.Put([]byte(latestBlockName), genesis.Hash)
+        err = b.Put([]byte(latestBlockName), genesis.Hash().Bytes())
         if err != nil { log.Panic(err) }
 
-        tip = genesis.Hash
+        tip = genesis.Hash().Bytes()
 
         return nil
     })
@@ -95,7 +96,7 @@ func dbExists() bool {
 }
 
 // 添加一个区块
-func (bc *Blockchain) MineBlock(transactions []*Transaction) *Block {
+func (bc *Blockchain) MineBlock(miner string, transactions []*Transaction) *Block {
     var lastEncodedBlock []byte
 
     // 校验将被写入区块的所有交易
@@ -115,17 +116,19 @@ func (bc *Blockchain) MineBlock(transactions []*Transaction) *Block {
     if err != nil { log.Panic(err) }
 
     // load last block by lastHash
-    newBlock := NewBlock(transactions, DeserializeBlock(lastEncodedBlock))
+    newBlock := NewBlock(miner, DeserializeBlock(lastEncodedBlock), transactions)
+    transactions = append(transactions, NewRewardTx(miner, ""))
 
     err = bc.db.Update(func(tx *bolt.Tx) error {
         b := tx.Bucket([]byte(blocksBucket))
-        err := b.Put(newBlock.Hash, newBlock.Serialize())
+
+        err := b.Put(newBlock.Hash().Bytes(), newBlock.Serialize())
         if err != nil { log.Panic(err) }
 
-        err = b.Put([]byte(latestBlockName), newBlock.Hash)
+        err = b.Put([]byte(latestBlockName), newBlock.Hash().Bytes())
         if err != nil { log.Panic(err) }
 
-        bc.tip = newBlock.Hash
+        bc.tip = newBlock.Hash().Bytes()
 
         return nil
     })
@@ -150,7 +153,7 @@ func (bc *Blockchain) FindUnspentTransactions() []Transaction {
         block := bci.Next()
 
         // 遍历区块中全部交易
-        for _, tx := range block.Transactions {
+        for _, tx := range block.Transactions() {
             // hex.EncodeToString f func(src []byte) string
             txID := hex.EncodeToString(tx.ID)
 
@@ -181,7 +184,7 @@ func (bc *Blockchain) FindUnspentTransactions() []Transaction {
         }
 
         // 循环至创世块
-        if len(block.PrevBlockHash) == 0 { break }
+        if len(block.ParentHash()) == 0 { break }
     }
 
     return unspentTXs
@@ -210,11 +213,11 @@ func (bc *Blockchain) FindTransaction(ID []byte) (Transaction, error) {
     for {
         block := bci.Next()
 
-        for _, tx := range block.Transactions {
+        for _, tx := range block.Transactions() {
             if bytes.Compare(tx.ID, ID) == 0 { return *tx, nil }
         }
 
-        if len(block.PrevBlockHash) == 0 { break }
+        if len(block.ParentHash()) == 0 { break }
     }
 
     return Transaction{}, errors.New("Transaction is not found")

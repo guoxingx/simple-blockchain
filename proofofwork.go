@@ -25,13 +25,13 @@ func NewProofOfWork(b *Block) *ProofOfWork {
     return pow
 }
 
-func (pow *ProofOfWork) prepareData(nonce int, hashedTransactions []byte) []byte {
+func (pow *ProofOfWork) prepareData(nonce uint64) []byte {
     // bytes.Join f func(s [][]byte, sep []byte) []byte
     data := bytes.Join(
         [][]byte{
-            pow.block.PrevBlockHash,
-            hashedTransactions,
-            IntToHex(pow.block.Timestamp),
+            pow.block.ParentHash().Bytes(),
+            pow.block.TxHash().Bytes(),
+            pow.block.Timestamp().Bytes(),
             IntToHex(int64(targetBits)),
             IntToHex(int64(nonce)),
         },
@@ -40,26 +40,25 @@ func (pow *ProofOfWork) prepareData(nonce int, hashedTransactions []byte) []byte
     return data
 }
 
-func (pow *ProofOfWork) Run() (int, []byte) {
+func (pow *ProofOfWork) Run() (uint64, []byte) {
     var hashInt big.Int
     var hash [32]byte
-    nonce := 0
+    nonce := uint64(0)
 
     fmt.Print("Mining the block containing ")
-    for _, tx := range pow.block.Transactions {
+    for _, tx := range pow.block.Transactions() {
         fmt.Printf("%x, ", tx.ID)
     }
 
-    hashedTransactions := pow.block.HashTransactions()
     for nonce < math.MaxInt64 {
         // 从0开始累加nonce，反复计算直至区块hash值小于目标值
-        data := pow.prepareData(nonce, hashedTransactions)
+        data := pow.prepareData(nonce)
         hash = sha256.Sum256(data)
         hashInt.SetBytes(hash[:])
 
         // big.Int.Cmp    f func(y *big.Int) (r int)
         if hashInt.Cmp(pow.target) == -1 {
-            fmt.Printf("\r%x", hash)
+            fmt.Printf("\r%x\n", hash)
             break
         } else {
             nonce ++
@@ -74,7 +73,7 @@ func (pow *ProofOfWork) Run() (int, []byte) {
 func (pow *ProofOfWork) Validate() bool {
 	var hashInt big.Int
 
-	data := pow.prepareData(pow.block.Nonce, pow.block.HashTransactions())
+	data := pow.prepareData(pow.block.Nonce())
 	hash := sha256.Sum256(data)
 	hashInt.SetBytes(hash[:])
 
