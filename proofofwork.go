@@ -17,7 +17,6 @@ type ProofOfWork struct {
 
 func NewProofOfWork(b *Block) *ProofOfWork {
     // big.NewInt(1) 左移 256 - targetBits 位 (即 2 的 256 - targetBits - 1 次方)
-    // 找到一个nonce使得区块的hash小于该数
     target := big.NewInt(1)
     target.Lsh(target, uint(256 - targetBits))
 
@@ -26,12 +25,12 @@ func NewProofOfWork(b *Block) *ProofOfWork {
     return pow
 }
 
-func (pow *ProofOfWork) prepareData(nonce int) []byte {
+func (pow *ProofOfWork) prepareData(nonce int, hashedTransactions []byte) []byte {
     // bytes.Join f func(s [][]byte, sep []byte) []byte
     data := bytes.Join(
         [][]byte{
             pow.block.PrevBlockHash,
-            pow.block.HashTransactions(),
+            hashedTransactions,
             IntToHex(pow.block.Timestamp),
             IntToHex(int64(targetBits)),
             IntToHex(int64(nonce)),
@@ -51,9 +50,10 @@ func (pow *ProofOfWork) Run() (int, []byte) {
         fmt.Printf("%x, ", tx.ID)
     }
 
+    hashedTransactions := pow.block.HashTransactions()
     for nonce < math.MaxInt64 {
         // 从0开始累加nonce，反复计算直至区块hash值小于目标值
-        data := pow.prepareData(nonce)
+        data := pow.prepareData(nonce, hashedTransactions)
         hash = sha256.Sum256(data)
         hashInt.SetBytes(hash[:])
 
@@ -74,7 +74,7 @@ func (pow *ProofOfWork) Run() (int, []byte) {
 func (pow *ProofOfWork) Validate() bool {
 	var hashInt big.Int
 
-	data := pow.prepareData(pow.block.Nonce)
+	data := pow.prepareData(pow.block.Nonce, pow.block.HashTransactions())
 	hash := sha256.Sum256(data)
 	hashInt.SetBytes(hash[:])
 

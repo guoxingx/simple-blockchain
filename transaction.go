@@ -126,6 +126,7 @@ func (tx *Transaction) Sign(privKey ecdsa.PrivateKey, prevTXs map[string]Transac
         txCopy.Vin[inID].PubKey = nil
 
         // 用privKey 对 txCopy.ID 进行签名
+        // ecdsa.Sign f func(rand io.Reader, priv *ecdsa.PrivateKey, hash []byte) (r *big.Int, s *big.Int, err error)
         r, s, err := ecdsa.Sign(rand.Reader, &privKey, txCopy.ID)
         if err != nil { log.Panic(err) }
 

@@ -13,11 +13,11 @@ type CLI struct {}
 const usage = `
 Usage:
   printchain                             print all the blocks of the blockchain
-  createblockchain -address ADDRESS      Create a blockchain and send genesis block reward to ADDRESS
+  createblockchain -account ACCOUNT      Create a blockchain and send genesis block reward to ACCOUNT
   createwallet                           Generates a new key-pair and saves it into the wallet file
-  listaddress                            Lists all addresses from the wallet file
-  getbalance -address ADDRESS            Get balance of ADDRESS
-  send -from FROM -to TO -amount AMOUNT  Send AMOUNT of coins from FROM address to TO
+  accounts                               Lists all accounts
+  getbalance -account ACCOUNT            Get balance of ACCOUNT
+  send -from FROM -to TO -amount AMOUNT  Send AMOUNT of coins from FROM account to TO
 `
 
 func (cli *CLI) Run() {
@@ -27,15 +27,15 @@ func (cli *CLI) Run() {
     printChainCmd := flag.NewFlagSet("printchain", flag.ExitOnError)
     createBlockchainCmd := flag.NewFlagSet("createblockchain", flag.ExitOnError)
     createWalletCmd := flag.NewFlagSet("createwallet", flag.ExitOnError)
-    listAddressCmd := flag.NewFlagSet("listaddress", flag.ExitOnError)
+    accountsCmd := flag.NewFlagSet("accounts", flag.ExitOnError)
     getBalanceCmd := flag.NewFlagSet("getbalance", flag.ExitOnError)
     sendCmd := flag.NewFlagSet("send", flag.ExitOnError)
 
     // flag.FlagSet.String  f func(name string, value string, usage string) *string
-    createBlockchainData := createBlockchainCmd.String("address", "", "The address to send genesis block reward to")
-    getBalanceData := getBalanceCmd.String("address", "", "The address to get balance for")
-    sendFrom := sendCmd.String("from", "", "Source wallet address")
-    sendTo := sendCmd.String("to", "", "Destination wallet address")
+    createBlockchainData := createBlockchainCmd.String("account", "", "The account to send genesis block reward to")
+    getBalanceData := getBalanceCmd.String("account", "", "The account to get balance for")
+    sendFrom := sendCmd.String("from", "", "Source wallet account")
+    sendTo := sendCmd.String("to", "", "Destination wallet account")
     sendAmount := sendCmd.Int("amount", 0, "Amount to send")
 
     switch os.Args[1] {
@@ -48,8 +48,8 @@ func (cli *CLI) Run() {
     case "createwallet":
         err := createWalletCmd.Parse(os.Args[2:])
         if err != nil { log.Panic(err) }
-    case "listaddress":
-        err := listAddressCmd.Parse(os.Args[2:])
+    case "accounts":
+        err := accountsCmd.Parse(os.Args[2:])
         if err != nil { log.Panic(err) }
     case "getbalance":
         err := getBalanceCmd.Parse(os.Args[2:])
@@ -75,7 +75,7 @@ func (cli *CLI) Run() {
 
     if createWalletCmd.Parsed() { cli.createWallet() }
 
-    if listAddressCmd.Parsed() { cli.listAddress() }
+    if accountsCmd.Parsed() { cli.accounts() }
 
     if getBalanceCmd.Parsed() {
         if *getBalanceData == "" {
