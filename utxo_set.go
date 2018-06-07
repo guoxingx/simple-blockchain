@@ -109,7 +109,7 @@ func (u UTXOSet) Update(block *Block) {
         b := tx.Bucket([]byte(utxoBucket))
 
         // 遍历区块中的交易
-        for _, tx := range block.Transactions() {
+        for _, tx := range block.Transactions {
             if tx.IsCoinbase() == false {
 
                 // 遍历交易的输入

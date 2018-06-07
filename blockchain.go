@@ -10,6 +10,7 @@ import (
     "encoding/hex"
 
     "github.com/boltdb/bolt"
+    "github.com/guoxingx/simple-blockchain/common"
 )
 
 const dbFile = "data/chain.db"
@@ -66,19 +67,19 @@ func CreateBlockchain(address string) *Blockchain {
     if err != nil { log.Panic(err) }
 
     err = db.Update(func(tx *bolt.Tx) error {
-        NewRewardTx(address, genesisCoinbaseData)
-        genesis := NewGenesisBlock(address)
+        rewardTx := NewRewardTx(address, genesisCoinbaseData)
+        genesis := NewGenesisBlock(address, rewardTx)
 
         b, err := tx.CreateBucket([]byte(blocksBucket))
         if err != nil { log.Panic(err) }
 
-        err = b.Put(genesis.Hash().Bytes(), genesis.Serialize())
+        err = b.Put(genesis.Hash.Bytes(), genesis.Serialize())
         if err != nil { log.Panic(err) }
 
-        err = b.Put([]byte(latestBlockName), genesis.Hash().Bytes())
+        err = b.Put([]byte(latestBlockName), genesis.Hash.Bytes())
         if err != nil { log.Panic(err) }
 
-        tip = genesis.Hash().Bytes()
+        tip = genesis.Hash.Bytes()
 
         return nil
     })
@@ -116,19 +117,20 @@ func (bc *Blockchain) MineBlock(miner string, transactions []*Transaction) *Bloc
     if err != nil { log.Panic(err) }
 
     // load last block by lastHash
+    transactions = append([]*Transaction{NewRewardTx(miner, "")}, transactions...)
     newBlock := NewBlock(miner, DeserializeBlock(lastEncodedBlock), transactions)
-    transactions = append(transactions, NewRewardTx(miner, ""))
+    // transactions = append(transactions, NewRewardTx(miner, ""))
 
     err = bc.db.Update(func(tx *bolt.Tx) error {
         b := tx.Bucket([]byte(blocksBucket))
 
-        err := b.Put(newBlock.Hash().Bytes(), newBlock.Serialize())
+        err := b.Put(newBlock.Hash.Bytes(), newBlock.Serialize())
         if err != nil { log.Panic(err) }
 
-        err = b.Put([]byte(latestBlockName), newBlock.Hash().Bytes())
+        err = b.Put([]byte(latestBlockName), newBlock.Hash.Bytes())
         if err != nil { log.Panic(err) }
 
-        bc.tip = newBlock.Hash().Bytes()
+        bc.tip = newBlock.Hash.Bytes()
 
         return nil
     })
@@ -153,7 +155,7 @@ func (bc *Blockchain) FindUnspentTransactions() []Transaction {
         block := bci.Next()
 
         // 遍历区块中全部交易
-        for _, tx := range block.Transactions() {
+        for _, tx := range block.Transactions {
             // hex.EncodeToString f func(src []byte) string
             txID := hex.EncodeToString(tx.ID)
 
@@ -184,7 +186,7 @@ func (bc *Blockchain) FindUnspentTransactions() []Transaction {
         }
 
         // 循环至创世块
-        if len(block.ParentHash()) == 0 { break }
+        if (block.ParentHash() == common.Hash{}) { break }
     }
 
     return unspentTXs
@@ -213,7 +215,7 @@ func (bc *Blockchain) FindTransaction(ID []byte) (Transaction, error) {
     for {
         block := bci.Next()
 
-        for _, tx := range block.Transactions() {
+        for _, tx := range block.Transactions {
             if bytes.Compare(tx.ID, ID) == 0 { return *tx, nil }
         }
 

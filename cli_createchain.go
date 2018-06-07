@@ -5,7 +5,7 @@ import (
     "log"
 )
 
-func (cli *CLI) createBlockchain(address string) {
+func (cli *CLI) createChain(address string) {
     if !ValidateAddress(address) { log.Panic("Error: Address is not valid") }
 
 	bc := CreateBlockchain(address)

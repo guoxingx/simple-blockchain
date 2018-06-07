@@ -13,7 +13,7 @@ type CLI struct {}
 const usage = `
 Usage:
   printchain                             print all the blocks of the blockchain
-  createblockchain -account ACCOUNT      Create a blockchain and send genesis block reward to ACCOUNT
+  createchain -account ACCOUNT      Create a blockchain and send genesis block reward to ACCOUNT
   createwallet                           Generates a new key-pair and saves it into the wallet file
   accounts                               Lists all accounts
   getbalance -account ACCOUNT            Get balance of ACCOUNT
@@ -25,14 +25,14 @@ func (cli *CLI) Run() {
 
     // NewFlagSet  f func(name string, errorHandling flag.ErrorHandling) *flag.FlagSet
     printChainCmd := flag.NewFlagSet("printchain", flag.ExitOnError)
-    createBlockchainCmd := flag.NewFlagSet("createblockchain", flag.ExitOnError)
+    createChainCmd := flag.NewFlagSet("createchain", flag.ExitOnError)
     createWalletCmd := flag.NewFlagSet("createwallet", flag.ExitOnError)
     accountsCmd := flag.NewFlagSet("accounts", flag.ExitOnError)
     getBalanceCmd := flag.NewFlagSet("getbalance", flag.ExitOnError)
     sendCmd := flag.NewFlagSet("send", flag.ExitOnError)
 
     // flag.FlagSet.String  f func(name string, value string, usage string) *string
-    createBlockchainData := createBlockchainCmd.String("account", "", "The account to send genesis block reward to")
+    createChainData := createChainCmd.String("account", "", "The account to send genesis block reward to")
     getBalanceData := getBalanceCmd.String("account", "", "The account to get balance for")
     sendFrom := sendCmd.String("from", "", "Source wallet account")
     sendTo := sendCmd.String("to", "", "Destination wallet account")
@@ -42,8 +42,8 @@ func (cli *CLI) Run() {
     case "printchain":
         err := printChainCmd.Parse(os.Args[2:])
         if err != nil { log.Panic(err) }
-    case "createblockchain":
-        err := createBlockchainCmd.Parse(os.Args[2:])
+    case "createchain":
+        err := createChainCmd.Parse(os.Args[2:])
         if err != nil { log.Panic(err) }
     case "createwallet":
         err := createWalletCmd.Parse(os.Args[2:])
@@ -65,12 +65,12 @@ func (cli *CLI) Run() {
     // flag.FlagSet.Parsed f func() bool
     if printChainCmd.Parsed() { cli.printChain() }
 
-    if createBlockchainCmd.Parsed() {
-        if *createBlockchainData == "" {
-            createBlockchainCmd.Usage()
+    if createChainCmd.Parsed() {
+        if *createChainData == "" {
+            createChainCmd.Usage()
             os.Exit(1)
         }
-        cli.createBlockchain(*createBlockchainData)
+        cli.createChain(*createChainData)
     }
 
     if createWalletCmd.Parsed() { cli.createWallet() }

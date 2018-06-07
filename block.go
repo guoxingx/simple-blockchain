@@ -29,19 +29,20 @@ type Header struct {
 }
 
 type Block struct {
-    header        *Header
-    transactions  []*Transaction
-    hash          common.Hash
+    Header        *Header
+    Transactions  []*Transaction
+    Hash          common.Hash
 }
 
-func (block *Block) ParentHash() common.Hash      { return block.header.ParentHash }
-func (block *Block) Miner() common.Address        { return block.header.Miner }
-func (block *Block) TxHash() common.Hash          { return block.header.TxHash }
-func (block *Block) Number() *big.Int             { return new(big.Int).Set(block.header.Number) }
-func (block *Block) Timestamp() *big.Int          { return new(big.Int).Set(block.header.Timestamp) }
-func (block *Block) Nonce() uint64                { return binary.BigEndian.Uint64(block.header.Nonce[:]) }
-func (block *Block) Transactions() []*Transaction { return block.transactions }
-func (block *Block) Hash() common.Hash            { return block.hash }
+// func (block *Block) Header() *Header              { return block.header }
+func (block *Block) ParentHash() common.Hash      { return block.Header.ParentHash }
+func (block *Block) Miner() common.Address        { return block.Header.Miner }
+func (block *Block) TxHash() common.Hash          { return block.Header.TxHash }
+func (block *Block) Number() *big.Int             { return new(big.Int).Set(block.Header.Number) }
+func (block *Block) Timestamp() *big.Int          { return new(big.Int).Set(block.Header.Timestamp) }
+func (block *Block) Nonce() uint64                { return binary.BigEndian.Uint64(block.Header.Nonce[:]) }
+// func (block *Block) Transactions() []*Transaction { return block.transactions }
+// func (block *Block) Hash() common.Hash            { return block.hash }
 
 // 获取一个新区块
 // @param: miner: []byte: 挖出区块的矿工
@@ -52,18 +53,20 @@ func NewBlock(miner string, parent *Block, transactions []*Transaction) *Block {
     var parentHash common.Hash
     var blockNumber big.Int
     if parent != nil {
-        parentHash = parent.hash
+        parentHash = parent.Hash
         blockNumber = *new(big.Int).Add(parent.Number(), big.NewInt(1))
     }
 
     header := &Header{parentHash, common.HexToAddress(miner), common.Hash{}, &blockNumber, big.NewInt(time.Now().Unix()), BlockNonce{}}
     block := &Block{header, transactions, common.Hash{}}
 
-    block.HashTransactions()
+    if len(transactions) > 0 {
+        block.HashTransactions()
+    }
     pow := NewProofOfWork(block)
     nonce, hash := pow.Run()
-    block.header.Nonce = EncodeNonce(uint64(nonce))
-    block.hash.SetBytes(hash)
+    block.Header.Nonce = EncodeNonce(uint64(nonce))
+    block.Hash.SetBytes(hash)
 
     return block
 }
@@ -72,8 +75,9 @@ func NewBlock(miner string, parent *Block, transactions []*Transaction) *Block {
 // rewardTx 矿工的奖励交易，不需要引用之前交易。
 // @return: *Block
 // func NewGenesisBlock(miner common.Address, rewardTx *Transaction) *Block {
-func NewGenesisBlock(miner string) *Block {
-    return NewBlock(miner, nil, []*Transaction{})
+func NewGenesisBlock(miner string, rewardTx *Transaction) *Block {
+    // return NewBlock(miner, nil, []*Transaction{})
+    return NewBlock(miner, nil, []*Transaction{rewardTx})
 }
 
 // 将一个区块序列化
@@ -104,10 +108,10 @@ func DeserializeBlock(d []byte) *Block {
 func (b *Block) HashTransactions() {
     var transactions [][]byte
 
-    for _, tx := range b.transactions {
+    for _, tx := range b.Transactions {
         transactions = append(transactions, tx.Serialize())
     }
     mTree := NewMerkleTree(transactions)
 
-    b.hash.SetBytes(mTree.RootNode.Data)
+    b.Hash.SetBytes(mTree.RootNode.Data)
 }

@@ -46,7 +46,7 @@ func (pow *ProofOfWork) Run() (uint64, []byte) {
     nonce := uint64(0)
 
     fmt.Print("Mining the block containing ")
-    for _, tx := range pow.block.Transactions() {
+    for _, tx := range pow.block.Transactions {
         fmt.Printf("%x, ", tx.ID)
     }
 

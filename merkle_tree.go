@@ -1,6 +1,7 @@
 package main
 
 import (
+    "log"
     "crypto/sha256"
 )
 
@@ -51,6 +52,10 @@ func NewMerkleTree(data [][]byte) *MerkleTree {
 
 // generate a root node by given nodes.
 func NewRootMerkleNode(nodes []*MerkleNode) *MerkleNode {
+    if len(nodes) == 0 {
+        log.Panic("there is no merkle node.")
+    }
+
     if len(nodes) == 1 {
         return nodes[0]
     }
